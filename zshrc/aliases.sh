@@ -6,9 +6,11 @@ alias nosleep='sudo pmset -a disablesleep 1'
 alias yessleep='sudo pmset -a disablesleep 0'
 
 # Git aliases
-alias g='echo "~/.zshrc alias: git status" && git status'
+alias g=git
 alias gs='git status'
 alias gc='git commit'
 alias gb='git branch'
 
 alias gitroot='git rev-parse --show-toplevel 2>/dev/null'
+
+alias p=pnpm
