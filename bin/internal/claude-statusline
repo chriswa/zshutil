@@ -7,8 +7,24 @@ echo "$input" > ~/.claude.laststatusline.json
 
 # Extract existing data
 model=$(echo "$input" | jq -r '.model.display_name // "Unknown"')
-dir=$(basename "$(echo "$input" | jq -r '.workspace.current_dir // "/"')")
+current_dir=$(echo "$input" | jq -r '.workspace.current_dir // "/"')
+project_dir=$(echo "$input" | jq -r '.workspace.project_dir // "/"')
 style=$(echo "$input" | jq -r '.output_style.name // "default"')
+
+# Calculate directory display
+if [[ "$current_dir" == "$project_dir" ]]; then
+    # Scenario 2: current_dir equals project_dir - show only project name
+    dir=$(basename "$project_dir")
+elif [[ "$current_dir" == "$project_dir"* ]]; then
+    # Scenario 1: current_dir is within project_dir - show project name + relative path
+    project_name=$(basename "$project_dir")
+    relative_path="${current_dir#$project_dir/}"
+    dir="${project_name}/${relative_path}"
+else
+    # Scenario 3: current_dir is outside project_dir - show project name + full current_dir in parentheses
+    project_name=$(basename "$project_dir")
+    dir="${project_name} (${current_dir})"
+fi
 cost=$(echo "$input" | jq -r '.cost.total_cost_usd // null')
 lines_added=$(echo "$input" | jq -r '.cost.total_lines_added // null')
 lines_removed=$(echo "$input" | jq -r '.cost.total_lines_removed // null')
