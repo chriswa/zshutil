@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+
+# Claude Code Pre-Tool-Use Hook: CD Drift Guard
+# Purpose: Prevent Claude Code from changing directories away from the Git root,
+# which causes confusion. If already outside the root, allow everything so Claude
+# can find its way back.
+
+# To use, add this hook to your ~/.claude/settings.json
+#   "hooks": {
+#     "PreToolUse": [
+#       {
+#         "matcher": "Bash",
+#         "hooks": [
+#           {
+#             "type": "command",
+#             "command": "/Users/chriswaddell/zshutil/bin/internal/claude-cd-drift-guard"
+#           }
+#         ]
+#       }
+#     ]
+#   },
+
+# Read the hook input from stdin
+input=$(cat)
+
+# Save the input to a file for inspection (useful for debugging)
+echo "$input" > ~/.claude.lasttool.json
+
+# Extract tool name and tool input
+tool_name=$(echo "$input" | jq -r '.tool_name // empty')
+command=$(echo "$input" | jq -r '.tool_input.command // empty')
+
+# Only apply this hook to Bash tool calls
+if [[ "$tool_name" != "Bash" ]]; then
+    jq -n '{
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "allow",
+            permissionDecisionReason: "Not a shell command"
+        }
+    }'
+    exit 0
+fi
+
+# Get the ACTUAL current working directory from the environment
+actual_cwd=$(pwd)
+
+# Get the Git root directory if we're in a Git repo
+git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+
+# If we're not in a Git repository, allow all commands
+if [[ -z "$git_root" ]]; then
+    jq -n '{
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "allow",
+            permissionDecisionReason: "Not in a Git repository"
+        }
+    }'
+    exit 0
+fi
+
+# Normalize the command by removing leading/trailing whitespace
+normalized_cmd=$(echo "$command" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+# Check if we're NOT at the Git root
+if [[ "$actual_cwd" != "$git_root" ]]; then
+    # We've already drifted away from the root - allow everything
+    # so Claude can navigate back however it wants
+    jq -n --arg cwd "$actual_cwd" --arg root "$git_root" '{
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "allow",
+            permissionDecisionReason: "Already away from Git root (\($root)), allowing all commands to navigate back"
+        }
+    }'
+    exit 0
+fi
+
+# We ARE at the Git root. Check if the command starts with "cd"
+if [[ "$normalized_cmd" =~ ^cd([[:space:]]|$) ]]; then
+    # Block cd commands when at the Git root
+    jq -n '{
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "deny",
+            permissionDecisionReason: "CD Drift Guard: cd commands should be wrapped in a subshell: (cd subdir && command)"
+        }
+    }'
+    exit 0
+fi
+
+# Allow all other commands when at the Git root
+jq -n '{
+    hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "allow",
+        permissionDecisionReason: "Command allowed at Git root"
+    }
+}'
+exit 0
