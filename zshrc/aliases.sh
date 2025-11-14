@@ -4,6 +4,7 @@
 # this has been set in `/etc/sudoers.d/pmset`: `%admin ALL=(root) NOPASSWD: /usr/bin/pmset`
 alias nosleep='sudo pmset -a disablesleep 1'
 alias yessleep='sudo pmset -a disablesleep 0'
+alias whatissleep='sudo pmset -g | grep SleepDisabled'
 
 # Git aliases
 alias g=git

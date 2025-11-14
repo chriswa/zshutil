@@ -17,11 +17,9 @@ fi
 
 ZSHUTIL_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Add bin directory to PATH
 source "$SCRIPT_DIR/path.sh"
-
-# Load aliases
 source "$SCRIPT_DIR/aliases.sh"
-
-# Load prompt configuration
+source "$SCRIPT_DIR/killport.sh"
 source "$SCRIPT_DIR/prompt.sh"
+
+export CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1
