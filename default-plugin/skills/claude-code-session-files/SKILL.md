@@ -209,6 +209,25 @@ jq -s --argjson n 0 '
 ' "$SESSION"
 ```
 
+## Cross-Session Links (Plan Mode)
+
+Sessions don't normally reference each other. The one exception is **plan mode**: when a user accepts a plan, Claude Code may start a new session for implementation. When this happens, the new session's first `user` event contains:
+
+1. A `planContent` field with the full plan markdown
+2. The plan text in `message.content`, ending with a transcript path referencing the planning session:
+   ```
+   read the full transcript at: /Users/chriswaddell/.claude/projects/-Users-chriswaddell-PROJECT/PLANNING-SESSION-ID.jsonl
+   ```
+
+This is the **only** mechanism linking two sessions. To find an implementation session spawned from a planning session:
+
+```bash
+# Find which session references a known planning session ID
+grep -l "PLANNING-SESSION-ID" ~/.claude/projects/-Users-chriswaddell-PROJECT/*.jsonl
+```
+
+Note: accepting a plan does not always create a new session — implementation may continue in the same session. The cross-reference only exists when a new session is created. If the user interrupts before plan mode completes, no link is created either.
+
 ## Tips
 
 - Use `jq -s` (slurp) when you need to aggregate across all lines (sorting, grouping, counting). For streaming/filtering individual events, plain `jq` is more memory-efficient.

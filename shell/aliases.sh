@@ -18,5 +18,5 @@ alias gitroot='git rev-parse --show-toplevel 2>/dev/null'
 
 alias p='pnpm'
 
-alias c='claude'
-alias ct='CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude'
+alias c='claude --allow-dangerously-skip-permissions'
+alias ct='CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --allow-dangerously-skip-permissions'

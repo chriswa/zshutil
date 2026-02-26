@@ -22,5 +22,7 @@ source "$SCRIPT_DIR/aliases.sh"
 source "$SCRIPT_DIR/killport.sh"
 source "$SCRIPT_DIR/prompt.sh"
 source "$SCRIPT_DIR/wt.sh"
+source "$SCRIPT_DIR/wt-spawn.sh"
+source "$SCRIPT_DIR/wt-teardown.sh"
 
 export CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1

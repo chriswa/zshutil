@@ -67,7 +67,7 @@ interface Options {
   sessionsOnly: boolean
   userOnly: boolean
   assistantOnly: boolean
-  days: number | null
+  maxAgeMs: number | null
   cwd: string | null
   searchString: string | null
 }
@@ -265,7 +265,19 @@ function pathToClaudeDirName(path: string): string {
   return normalized.replace(/\//g, '-')
 }
 
-function findAllSessionFiles(maxAgeDays: number | null = null, cwdFilter: string | null = null): Array<string> {
+function parseDuration(duration: string): number | null {
+  const match = duration.match(/^(\d+(?:\.\d+)?)\s*(m|min|mins|minutes?|h|hr|hrs|hours?|d|days?|w|wk|wks|weeks?)$/i)
+  if (!match) return null
+  const value = Number.parseFloat(match[1])
+  const unit = match[2].toLowerCase()
+  if (unit.startsWith('m')) return value * 60 * 1000
+  if (unit.startsWith('h')) return value * 60 * 60 * 1000
+  if (unit.startsWith('d')) return value * 24 * 60 * 60 * 1000
+  if (unit.startsWith('w')) return value * 7 * 24 * 60 * 60 * 1000
+  return null
+}
+
+function findAllSessionFiles(maxAgeMs: number | null = null, cwdFilter: string | null = null): Array<string> {
   const sessionFiles: Array<string> = []
 
   if (!existsSync(claudeProjectsDir)) {
@@ -273,7 +285,7 @@ function findAllSessionFiles(maxAgeDays: number | null = null, cwdFilter: string
     process.exit(1)
   }
 
-  const cutoffTime = maxAgeDays !== null ? Date.now() - maxAgeDays * 24 * 60 * 60 * 1000 : null
+  const cutoffTime = maxAgeMs !== null ? Date.now() - maxAgeMs : null
 
   // Convert cwd filter to Claude's directory name format for matching
   const cwdDirPattern = cwdFilter ? pathToClaudeDirName(cwdFilter) : null
@@ -323,7 +335,7 @@ function parseArgs(args: Array<string>): Options {
     sessionsOnly: false,
     userOnly: false,
     assistantOnly: false,
-    days: null,
+    maxAgeMs: null,
     cwd: null,
     searchString: null,
   }
@@ -343,18 +355,32 @@ function parseArgs(args: Array<string>): Options {
       result.assistantOnly = true
     }
     else if (arg === '--days' && i + 1 < args.length) {
-      result.days = Number.parseInt(args[i + 1], 10)
-      i++ // skip next arg
+      const days = Number.parseInt(args[i + 1], 10)
+      result.maxAgeMs = days * 24 * 60 * 60 * 1000
+      i++
+    }
+    else if (arg === '--since' && i + 1 < args.length) {
+      const durationStr = args[i + 1]
+      const ms = parseDuration(durationStr)
+      if (ms === null) {
+        process.stderr.write(`Error: Invalid duration "${durationStr}". Examples: 30m, 4h, 24h, 7d, 2w\n`)
+        process.exit(1)
+      }
+      result.maxAgeMs = ms
+      i++
     }
     else if (arg === '--cwd') {
-      // Always use current working directory
       result.cwd = process.cwd()
     }
     else if (arg === '--dir' && i + 1 < args.length) {
       result.cwd = args[i + 1]
-      i++ // skip next arg
+      i++
     }
-    else if (!arg.startsWith('--')) {
+    else if (arg.startsWith('--')) {
+      process.stderr.write(`Error: Unknown flag "${arg}"\n`)
+      process.exit(1)
+    }
+    else {
       result.searchString = arg
     }
   }
@@ -373,6 +399,7 @@ function main(): void {
     process.stdout.write('  --sessions-only Only show session IDs with matches\n')
     process.stdout.write('  --user          Only search in user messages\n')
     process.stdout.write('  --assistant     Only search in assistant messages\n')
+    process.stdout.write('  --since <dur>   Only search sessions modified within duration (e.g. 30m, 4h, 24h, 7d, 2w)\n')
     process.stdout.write('  --days <n>      Only search sessions modified in last n days\n')
     process.stdout.write('  --cwd           Only search sessions in the current working directory\n')
     process.stdout.write('  --dir <path>    Only search sessions in the specified directory\n')
@@ -404,14 +431,16 @@ function main(): void {
   if (typeFilter) {
     process.stderr.write(`Filtering by type: ${typeFilter.join(', ')}\n`)
   }
-  if (opts.days !== null) {
-    process.stderr.write(`Limiting to sessions modified in last ${opts.days} days\n`)
+  if (opts.maxAgeMs !== null) {
+    const hours = opts.maxAgeMs / (60 * 60 * 1000)
+    const label = hours >= 24 ? `${hours / 24}d` : `${hours}h`
+    process.stderr.write(`Limiting to sessions modified in last ${label}\n`)
   }
   if (opts.cwd !== null) {
     process.stderr.write(`Filtering to sessions in: ${opts.cwd}\n`)
   }
 
-  const sessionFiles = findAllSessionFiles(opts.days, opts.cwd)
+  const sessionFiles = findAllSessionFiles(opts.maxAgeMs, opts.cwd)
   process.stderr.write(`Found ${sessionFiles.length} session files\n`)
 
   const allResults: Array<SearchResult> = []

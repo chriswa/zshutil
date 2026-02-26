@@ -52,10 +52,12 @@ function set_prompt() {
   local cwd='%~'
 
   local exit_colour="${colour_good_exit}"
+  local dollar_hidden="%{${esc}[97m%}"
   if [[ $exit_code -ne 0 ]]; then
     exit_colour="${colour_bad_exit}"
+    dollar_hidden="%{${esc}[31m%}"
   fi
-  PROMPT="${branch_name}${exit_colour} ${cwd} ${reset}${bright_white_on_black} "
+  PROMPT="${branch_name}${exit_colour} ${cwd}${dollar_hidden}\$${reset}${bright_white_on_black} "
 }
 
 # Reset colors just before command executes (prevents color bleed into output)
