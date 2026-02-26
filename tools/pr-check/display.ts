@@ -160,8 +160,24 @@ function computeTriage(blockers: string[]): Triage {
     }
   }
 
-  // -auto-merge only halts when it's the sole actionable blocker
-  if (halt.includes("-auto-merge") && (remediate.length > 0 || halt.length > 1)) {
+  // Staged suppression: human-decision blockers (group 4) should not surface
+  // while earlier-stage items are still active.
+  //
+  // Flow: unsettled → automated failures → comments → reviewers → auto-merge
+  //
+  // - Reviewers: suppress while wait (unsettled) or remediate items exist
+  // - Auto-merge: only surface when it's the sole remaining actionable blocker
+  const hasUnsettledOrRemediate = wait.length > 0 || remediate.length > 0;
+
+  // Suppress reviewer blockers while automated items are pending
+  for (const reviewerBlocker of halt.filter((b) => /^-\d+ Reviewers?$/.test(b))) {
+    if (hasUnsettledOrRemediate || halt.length > 1) {
+      halt.splice(halt.indexOf(reviewerBlocker), 1);
+    }
+  }
+
+  // Auto-merge only halts when it's the sole actionable blocker (nothing in wait, remediate, or other halt)
+  if (halt.includes("-auto-merge") && (hasUnsettledOrRemediate || halt.length > 1)) {
     halt.splice(halt.indexOf("-auto-merge"), 1);
   }
 
