@@ -79,8 +79,10 @@ const REVIEW_THREADS_QUERY = `
         reviewThreads(first: 100) {
           nodes {
             isResolved
-            comments(first: 1) {
-              nodes { author { login } }
+            comments(first: 100) {
+              nodes {
+                author { login }
+              }
             }
           }
         }
@@ -89,7 +91,23 @@ const REVIEW_THREADS_QUERY = `
   }
 `;
 
-export async function fetchUnresolvedSelfCommentCount(prNumber: number, author: string): Promise<number> {
+interface ThreadComment {
+  author: { login: string };
+}
+
+interface ReviewThread {
+  isResolved: boolean;
+  comments: { nodes: ThreadComment[] };
+}
+
+export interface UnresolvedComments {
+  selfThreads: number;
+  reviewerComments: number;
+}
+
+const BOTS = new Set(["coderabbitai", "cursor"]);
+
+export async function fetchUnresolvedComments(prNumber: number, author: string): Promise<UnresolvedComments> {
   const [owner, repo] = REPO.split("/");
   const result = await run([
     "gh", "api", "graphql",
@@ -98,13 +116,38 @@ export async function fetchUnresolvedSelfCommentCount(prNumber: number, author: 
     "-F", `number=${prNumber}`,
     "-f", `query=${REVIEW_THREADS_QUERY}`,
   ]);
-  const threads = JSON.parse(result).data.repository.pullRequest.reviewThreads.nodes as {
-    isResolved: boolean;
-    comments: { nodes: { author: { login: string } }[] };
-  }[];
-  return threads.filter((t) =>
-    !t.isResolved && t.comments.nodes[0]?.author?.login === author
-  ).length;
+  const threads = JSON.parse(result).data.repository.pullRequest.reviewThreads.nodes as ReviewThread[];
+
+  let selfThreads = 0;
+  let reviewerComments = 0;
+
+  for (const thread of threads) {
+    if (thread.isResolved) continue;
+
+    const firstAuthor = thread.comments.nodes[0]?.author?.login;
+    if (!firstAuthor || BOTS.has(firstAuthor)) continue;
+
+    if (firstAuthor === author) {
+      // Self thread: count 1 per unresolved thread
+      selfThreads++;
+    } else {
+      // Reviewer thread: only count reviewer comments after the author's last reply.
+      // Any comments above the author's last reply are considered addressed.
+      const comments = thread.comments.nodes;
+      let lastAuthorReplyIndex = -1;
+      for (let idx = 0; idx < comments.length; idx++) {
+        if (comments[idx]?.author?.login === author) lastAuthorReplyIndex = idx;
+      }
+
+      for (let idx = lastAuthorReplyIndex + 1; idx < comments.length; idx++) {
+        const commentAuthor = comments[idx]?.author?.login;
+        if (!commentAuthor || commentAuthor === author || BOTS.has(commentAuthor)) continue;
+        reviewerComments++;
+      }
+    }
+  }
+
+  return { selfThreads, reviewerComments };
 }
 
 export async function fetchOpenPRs(): Promise<GhPullRequest[]> {
