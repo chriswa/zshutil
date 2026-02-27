@@ -82,6 +82,7 @@ const REVIEW_THREADS_QUERY = `
             comments(first: 100) {
               nodes {
                 author { login }
+                body
               }
             }
           }
@@ -93,6 +94,7 @@ const REVIEW_THREADS_QUERY = `
 
 interface ThreadComment {
   author: { login: string };
+  body: string;
 }
 
 interface ReviewThread {
@@ -128,8 +130,11 @@ export async function fetchUnresolvedComments(prNumber: number, author: string):
     if (!firstAuthor || BOTS.has(firstAuthor)) continue;
 
     if (firstAuthor === author) {
-      // Self thread: count 1 per unresolved thread
-      selfThreads++;
+      // Self thread: only count if the first comment is addressed to Claude (prefixed with "claude: ")
+      const firstBody = thread.comments.nodes[0]?.body ?? "";
+      if (/^claude: /i.test(firstBody)) {
+        selfThreads++;
+      }
     } else {
       // Reviewer thread: only count reviewer comments after the author's last reply.
       // Any comments above the author's last reply are considered addressed.
