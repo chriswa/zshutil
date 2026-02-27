@@ -50,16 +50,22 @@ function getCodeRabbitState(pr: GhPullRequest): CodeRabbitState {
 
 // ---- Meticulous ----
 
-function getMeticulousState(pr: GhPullRequest): MeticulousState {
+interface MeticulousResult {
+  state: MeticulousState;
+  url: string | null;
+}
+
+function getMeticulousResult(pr: GhPullRequest): MeticulousResult {
   const checks = getChecks(pr);
   const met = checks.find(
     (c) => isCheckRun(c) && c.name === "Meticulous Tests (spare)"
   ) as GhCheckRun | undefined;
-  if (!met) return "N/A";
-  if (met.status !== "COMPLETED") return "PENDING";
-  if (met.conclusion === "SUCCESS") return "PASS";
-  if (met.conclusion === "FAILURE") return "FAIL";
-  return "N/A";
+  if (!met) return { state: "N/A", url: null };
+  const url = met.detailsUrl || null;
+  if (met.status !== "COMPLETED") return { state: "PENDING", url };
+  if (met.conclusion === "SUCCESS") return { state: "PASS", url };
+  if (met.conclusion === "FAILURE") return { state: "FAIL", url };
+  return { state: "N/A", url };
 }
 
 // ---- CI Tests ----
@@ -116,8 +122,10 @@ function getTestResult(pr: GhPullRequest): TestResult {
     }
   }
 
-  if (hasFail) return { state: "FAIL", failedUrls };
+  // Wait for all checks to settle before reporting failures — acting on
+  // partial results causes the agent to push fixes that cancel in-flight tests.
   if (hasPending) return { state: "PENDING", failedUrls: [] };
+  if (hasFail) return { state: "FAIL", failedUrls };
   return { state: "PASS", failedUrls: [] };
 }
 
@@ -264,11 +272,11 @@ function getBlockers(
 export function analyzePR(pr: GhPullRequest): AnalyzedPR {
   const staleMinutes = computeStaleMinutes(pr.updatedAt);
   const codeRabbit = getCodeRabbitState(pr);
-  const meticulous = getMeticulousState(pr);
+  const meticulousResult = getMeticulousResult(pr);
   const testResult = getTestResult(pr);
   const mergify = getMergifyState(pr);
   const approval = getApprovalStatus(pr);
-  const blockers = getBlockers(pr, meticulous, testResult.state, mergify);
+  const blockers = getBlockers(pr, meticulousResult.state, testResult.state, mergify);
 
   return {
     number: pr.number,
@@ -278,7 +286,8 @@ export function analyzePR(pr: GhPullRequest): AnalyzedPR {
     staleMinutes,
     staleLabel: formatStaleTime(staleMinutes),
     codeRabbit,
-    meticulous,
+    meticulous: meticulousResult.state,
+    meticulousUrl: meticulousResult.url,
     tests: testResult.state,
     mergify,
     approvalCount: approval.approvalCount,
