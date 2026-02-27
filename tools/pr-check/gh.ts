@@ -78,7 +78,10 @@ const REVIEW_THREADS_QUERY = `
       pullRequest(number: $number) {
         reviewThreads(first: 100) {
           nodes {
+            id
             isResolved
+            path
+            line
             comments(first: 100) {
               nodes {
                 author { login }
@@ -98,13 +101,23 @@ interface ThreadComment {
 }
 
 interface ReviewThread {
+  id: string;
   isResolved: boolean;
+  path: string;
+  line: number | null;
   comments: { nodes: ThreadComment[] };
 }
 
+export interface UnresolvedThreadDetail {
+  threadId: string;
+  path: string;
+  line: number | null;
+  comments: { author: string; body: string }[];
+}
+
 export interface UnresolvedComments {
-  selfThreads: number;
-  reviewerComments: number;
+  selfThreads: UnresolvedThreadDetail[];
+  reviewerThreads: UnresolvedThreadDetail[];
 }
 
 const BOTS = new Set(["coderabbitai", "cursor"]);
@@ -120,8 +133,8 @@ export async function fetchUnresolvedComments(prNumber: number, author: string):
   ]);
   const threads = JSON.parse(result).data.repository.pullRequest.reviewThreads.nodes as ReviewThread[];
 
-  let selfThreads = 0;
-  let reviewerComments = 0;
+  const selfThreads: UnresolvedThreadDetail[] = [];
+  const reviewerThreads: UnresolvedThreadDetail[] = [];
 
   for (const thread of threads) {
     if (thread.isResolved) continue;
@@ -129,14 +142,21 @@ export async function fetchUnresolvedComments(prNumber: number, author: string):
     const firstAuthor = thread.comments.nodes[0]?.author?.login;
     if (!firstAuthor || BOTS.has(firstAuthor)) continue;
 
+    const toDetail = (comments: ThreadComment[]): UnresolvedThreadDetail => ({
+      threadId: thread.id,
+      path: thread.path,
+      line: thread.line,
+      comments: comments.map((c) => ({ author: c.author?.login ?? "unknown", body: c.body })),
+    });
+
     if (firstAuthor === author) {
       // Self thread: only count if the first comment is addressed to Claude (prefixed with "claude: ")
       const firstBody = thread.comments.nodes[0]?.body ?? "";
       if (/^claude: /i.test(firstBody)) {
-        selfThreads++;
+        selfThreads.push(toDetail(thread.comments.nodes));
       }
     } else {
-      // Reviewer thread: only count reviewer comments after the author's last reply.
+      // Reviewer thread: only include comments after the author's last reply.
       // Any comments above the author's last reply are considered addressed.
       const comments = thread.comments.nodes;
       let lastAuthorReplyIndex = -1;
@@ -144,15 +164,18 @@ export async function fetchUnresolvedComments(prNumber: number, author: string):
         if (comments[idx]?.author?.login === author) lastAuthorReplyIndex = idx;
       }
 
-      for (let idx = lastAuthorReplyIndex + 1; idx < comments.length; idx++) {
-        const commentAuthor = comments[idx]?.author?.login;
-        if (!commentAuthor || commentAuthor === author || BOTS.has(commentAuthor)) continue;
-        reviewerComments++;
+      const unaddressed = comments.slice(lastAuthorReplyIndex + 1).filter((c) => {
+        const login = c.author?.login;
+        return login && login !== author && !BOTS.has(login);
+      });
+
+      if (unaddressed.length > 0) {
+        reviewerThreads.push(toDetail(comments));
       }
     }
   }
 
-  return { selfThreads, reviewerComments };
+  return { selfThreads, reviewerThreads };
 }
 
 export async function fetchOpenPRs(): Promise<GhPullRequest[]> {

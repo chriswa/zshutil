@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { fetchOpenPRs, fetchUserPRs, fetchSinglePR, fetchUnresolvedSelfCommentCount, getCurrentUser } from "./gh";
+import { fetchOpenPRs, fetchUserPRs, fetchSinglePR, fetchUnresolvedComments, getCurrentUser, type UnresolvedComments } from "./gh";
 import { analyzePR, sortPRs } from "./analyze";
 import { renderOpenTable, renderMineTable, renderBlockers, printBlockerLegend } from "./display";
 
@@ -20,11 +20,13 @@ async function main() {
     console.error(`Fetching PR #${prNumber}...\n`);
     const raw = await fetchSinglePR(prNumber);
     const analyzed = analyzePR(raw);
+    let unresolvedThreads: UnresolvedComments | undefined;
     if (raw.state === "OPEN") {
-      const selfComments = await fetchUnresolvedSelfCommentCount(prNumber, raw.author.login);
-      if (selfComments > 0) analyzed.blockers.push("Self Comment");
+      unresolvedThreads = await fetchUnresolvedComments(prNumber, raw.author.login);
+      if (unresolvedThreads.selfThreads.length > 0) analyzed.blockers.push("Self Comment");
+      if (unresolvedThreads.reviewerThreads.length > 0) analyzed.blockers.push("Review Comments");
     }
-    renderBlockers(analyzed);
+    await renderBlockers(analyzed, unresolvedThreads);
     return;
   }
 

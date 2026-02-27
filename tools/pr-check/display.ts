@@ -1,4 +1,5 @@
 import type { AnalyzedPR } from "./types";
+import type { UnresolvedComments } from "./gh";
 import { resolveFailedTests } from "./circleci";
 
 // ---- ANSI ----
@@ -198,7 +199,7 @@ function formatRev(pr: AnalyzedPR): string {
   return b > 0 ? `${h}+${b}` : `${h}`;
 }
 
-export async function renderBlockers(pr: AnalyzedPR): Promise<void> {
+export async function renderBlockers(pr: AnalyzedPR, unresolvedThreads?: UnresolvedComments): Promise<void> {
   const prLink = link(`${PR_URL_BASE}${pr.number}`, `#${pr.number}`);
   console.error(`${BOLD}${prLink} ${pr.title}${RESET}`);
   console.error(`${DIM}Author: ${pr.author}  State: ${pr.displayState}  Reviews: ${formatRev(pr)}${RESET}`);
@@ -208,7 +209,14 @@ export async function renderBlockers(pr: AnalyzedPR): Promise<void> {
   }));
   const triage = computeTriage(pr.blockers);
   const failedTestDetails = await resolveFailedTests(pr.failedTestUrls);
-  console.log(JSON.stringify({ blockers, failedTestUrls: pr.failedTestUrls, failedTestDetails, meticulousUrl: pr.meticulousUrl, triage }));
+  console.log(JSON.stringify({
+    blockers,
+    failedTestUrls: pr.failedTestUrls,
+    failedTestDetails,
+    meticulousUrl: pr.meticulousUrl,
+    triage,
+    ...(unresolvedThreads ? { unresolvedThreads } : {}),
+  }));
 }
 
 // ---- Tables ----
