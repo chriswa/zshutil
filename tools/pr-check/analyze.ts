@@ -225,7 +225,9 @@ function getBlockers(
 
   pushCheckRunBlockers(pr, blockers, "verify-pr-checklist", "Checklist", "Checklist Unsettled");
   pushCheckRunBlockers(pr, blockers, "verify-associated-issue", "Linear", "Linear Unsettled");
-  pushCheckRunBlockers(pr, blockers, "pr-safety-check", "Safety", "Safety Unsettled");
+  if (!pr.labels.some((l) => l.name === "ignore-pr-safety-check")) {
+    pushCheckRunBlockers(pr, blockers, "pr-safety-check", "Safety", "Safety Unsettled");
+  }
   pushCheckRunBlockers(pr, blockers, "check-breaking-api-changes", "Breaking", "Breaking Unsettled");
   pushCheckRunBlockers(pr, blockers, "Aikido Security: check code", "Security", "Security Unsettled");
 
