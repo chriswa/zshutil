@@ -90,6 +90,16 @@ function isPlaywrightApprovalGate(check: GhStatusCheck): boolean {
   return false;
 }
 
+function isDynamicConfig(check: GhStatusCheck): boolean {
+  if (isStatusContext(check)) {
+    return check.context === "ci/circleci: dynamic-config";
+  }
+  if (isCheckRun(check)) {
+    return check.name === "dynamic-config";
+  }
+  return false;
+}
+
 interface TestResult {
   state: TestState;
   failedUrls: string[];
@@ -97,7 +107,7 @@ interface TestResult {
 
 function getTestResult(pr: GhPullRequest): TestResult {
   const checks = getChecks(pr);
-  const ciChecks = checks.filter((c) => isCircleCICheck(c) && !isPlaywrightApprovalGate(c));
+  const ciChecks = checks.filter((c) => isCircleCICheck(c) && !isPlaywrightApprovalGate(c) && !isDynamicConfig(c));
   if (ciChecks.length === 0) return { state: "N/A", failedUrls: [] };
 
   let hasFail = false;
