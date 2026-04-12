@@ -30,6 +30,12 @@ function set_prompt() {
   local colour_branch_clean="%{${esc}[30;106m%}"
   local colour_branch_staged="%{${esc}[30;103m%}"
   local colour_branch_dirty="%{${esc}[30;105m%}"
+  local colour_machine="%{${esc}[30;102m%}"
+
+  local machine_prefix=""
+  if [[ -n "$SSH_TTY" ]]; then
+    machine_prefix="${colour_machine} $(hostname -s) ${reset}"
+  fi
 
   local branch_color=""
   local branch_name=$(git_branch)
@@ -57,7 +63,7 @@ function set_prompt() {
     exit_colour="${colour_bad_exit}"
     dollar_hidden="%{${esc}[31m%}"
   fi
-  PROMPT="${branch_name}${exit_colour} ${cwd}${dollar_hidden}\$${reset}${bright_white_on_black} "
+  PROMPT="${machine_prefix}${branch_name}${exit_colour} ${cwd}${dollar_hidden}\$${reset}${bright_white_on_black} "
 }
 
 # Reset colors just before command executes (prevents color bleed into output)
