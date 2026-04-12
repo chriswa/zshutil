@@ -31,7 +31,7 @@ if [[ -n "$ZSH_VERSION" ]]; then
     local colour_machine="%{${esc}[30;102m%}"
 
     local machine_prefix=""
-    if [[ -n "$SSH_TTY" ]]; then
+    if [[ -n "$SSH_CLIENT" ]]; then
       machine_prefix="${colour_machine} $(hostname -s) ${reset}"
     fi
 
@@ -86,9 +86,15 @@ elif [[ -n "$BASH_VERSION" ]]; then
     local colour_good_exit='\[\e[30;107m\]'
     local colour_bad_exit='\[\e[93;41m\]'
     local bright_white_on_black='\[\e[97;40m\]'
+    local colour_machine='\[\e[30;102m\]'
     local colour_branch_clean='\[\e[30;106m\]'
     local colour_branch_staged='\[\e[30;103m\]'
     local colour_branch_dirty='\[\e[30;105m\]'
+
+    local machine_prefix=""
+    if [[ -n "$SSH_CLIENT" ]]; then
+      machine_prefix="${colour_machine} $(hostname -s) ${reset}"
+    fi
 
     local branch_name
     branch_name=$(git_branch)
@@ -117,7 +123,7 @@ elif [[ -n "$BASH_VERSION" ]]; then
       dollar_hidden='\[\e[97m\]'
     fi
 
-    PS1="${branch_part}${exit_colour} \w${dollar_hidden}\$${reset}${bright_white_on_black} "
+    PS1="${machine_prefix}${branch_part}${exit_colour} \w${dollar_hidden}\$${reset}${bright_white_on_black} "
   }
 
   # PS0 is displayed before each command runs — resets colors to prevent bleed into output
