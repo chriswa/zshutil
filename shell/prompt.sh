@@ -21,6 +21,10 @@ if [[ -n "$ZSH_VERSION" ]]; then
   function set_prompt() {
     local exit_code=$?
 
+    # Resync $PWD if it's stale (e.g. inherited from a parent process with a
+    # different cwd). Reassigns PWD directly so we don't trigger chpwd hooks.
+    [[ "$PWD" -ef . ]] || PWD=$(builtin pwd -P 2>/dev/null) || PWD=$HOME
+
     local esc=$'\e'
     local reset="%{${esc}[0m%}"
     local colour_cwd="%{${esc}[30;107m%}"
@@ -81,6 +85,11 @@ elif [[ -n "$BASH_VERSION" ]]; then
 
   function _set_prompt_bash() {
     local exit_code=$?
+
+    # Resync $PWD if it's stale (e.g. inherited from a parent process with a
+    # different cwd). \w expands from $PWD, so this prevents a wrong-looking
+    # prompt when getcwd() and $PWD disagree.
+    [[ "$PWD" -ef . ]] || cd . 2>/dev/null
 
     local reset='\[\e[0m\]'
     local colour_good_exit='\[\e[30;107m\]'
