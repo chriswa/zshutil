@@ -41,11 +41,6 @@
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/bash/bash-git.ts",
-            "timeout": 10
-          },
-          {
-            "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/bash/bash-grep.ts",
             "timeout": 10
           }

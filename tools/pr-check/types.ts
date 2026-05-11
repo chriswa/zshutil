@@ -64,6 +64,8 @@ export interface GhPullRequest {
   statusCheckRollup: GhStatusCheck[] | null;
 }
 
+import type { FailedTestDetail } from "./circleci";
+
 // ---- Analyzed / enriched types ----
 
 export type CodeRabbitState = "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "DISMISSED" | "PENDING" | "N/A";
@@ -88,6 +90,8 @@ export interface AnalyzedPR {
   botApprovalCount: number;
   blockers: string[];
   failedTestUrls: string[];
+  failedTestDetails: FailedTestDetail[];
+  meticulousUrl: string | null;
   labels: string[];
   updatedAt: string;
 }

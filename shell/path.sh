@@ -11,3 +11,9 @@ if [[ -n "$CHRISWA_DEVKIT_DIR" ]]; then
     export PATH="$CHRISWA_DEVKIT_BIN_DIR:$PATH"
   fi
 fi
+
+# Add chriswa-util bin directory to PATH if it exists
+CHRISWA_UTIL_BIN_DIR="$HOME/chriswa-util/bin"
+if [[ -d "$CHRISWA_UTIL_BIN_DIR" && ":$PATH:" != *":$CHRISWA_UTIL_BIN_DIR:"* ]]; then
+  export PATH="$CHRISWA_UTIL_BIN_DIR:$PATH"
+fi

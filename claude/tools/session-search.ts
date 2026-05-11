@@ -5,8 +5,8 @@ import { homedir } from 'os'
 import { basename, join } from 'path'
 import { z } from 'zod'
 
-const homeDir = homedir()
-const claudeProjectsDir = join(homeDir, '.claude', 'projects')
+export const homeDir = homedir()
+export const claudeProjectsDir = join(homeDir, '.claude', 'projects')
 
 // ANSI color codes (purpose-based names)
 const colors = {
@@ -20,12 +20,12 @@ const colors = {
 }
 
 // Zod schemas
-const ContentBlockSchema = z.object({
+export const ContentBlockSchema = z.object({
   type: z.string(),
   text: z.string().optional(),
 })
 
-const ParsedLineSchema = z.object({
+export const ParsedLineSchema = z.object({
   type: z.string().optional(),
   message: z.object({
     content: z.union([z.string(), z.array(ContentBlockSchema)]).optional(),
@@ -35,9 +35,9 @@ const ParsedLineSchema = z.object({
   summary: z.string().optional(),
 })
 
-type ParsedLine = z.infer<typeof ParsedLineSchema>
+export type ParsedLine = z.infer<typeof ParsedLineSchema>
 
-interface SessionMetadata {
+export interface SessionMetadata {
   cwd: string | null
   summary: string | null
   createdAt: string | null
@@ -45,13 +45,13 @@ interface SessionMetadata {
   humanMessageCount: number
 }
 
-interface ContextLine {
+export interface ContextLine {
   lineNumber: number
   type: string
   content: string
 }
 
-interface SearchResult {
+export interface SearchResult {
   sessionFile: string
   sessionId: string
   metadata: SessionMetadata
@@ -72,7 +72,7 @@ interface Options {
   searchString: string | null
 }
 
-function parseLine(line: string): ParsedLine | null {
+export function parseLine(line: string): ParsedLine | null {
   try {
     const result = ParsedLineSchema.safeParse(JSON.parse(line))
     return result.success ? result.data : null
@@ -82,7 +82,7 @@ function parseLine(line: string): ParsedLine | null {
   }
 }
 
-function getLineType(line: string): string {
+export function getLineType(line: string): string {
   const parsed = parseLine(line)
   const type = parsed?.type ?? 'parse-error'
   // Rename assistant to agent for display
@@ -111,7 +111,7 @@ function highlightMatch(text: string, searchString: string): string {
   return `${before}${colors.matchBg}${colors.matchFg}${match}${colors.reset}${after}`
 }
 
-function extractContent(line: string): string | null {
+export function extractContent(line: string): string | null {
   const parsed = parseLine(line)
   if (parsed?.message?.content !== undefined) {
     const content = parsed.message.content
@@ -133,7 +133,7 @@ function extractContent(line: string): string | null {
   return null
 }
 
-function extractSessionMetadata(lines: Array<string>): SessionMetadata {
+export function extractSessionMetadata(lines: Array<string>): SessionMetadata {
   let cwd: string | null = null
   let summary: string | null = null
   let createdAt: string | null = null
@@ -171,7 +171,7 @@ function extractSessionMetadata(lines: Array<string>): SessionMetadata {
   return { cwd, summary, createdAt, lastModifiedAt, humanMessageCount }
 }
 
-function searchSessionFile(
+export function searchSessionFile(
   filePath: string,
   searchString: string,
   contextLines = 2,
@@ -258,14 +258,14 @@ function searchSessionFile(
 }
 
 // Convert a path to Claude's directory name format (e.g., /Users/foo -> -Users-foo)
-function pathToClaudeDirName(path: string): string {
+export function pathToClaudeDirName(path: string): string {
   // Normalize the path and remove trailing slashes
   const normalized = path.replace(/\/+$/, '')
   // Replace all slashes with dashes and add leading dash
   return normalized.replace(/\//g, '-')
 }
 
-function parseDuration(duration: string): number | null {
+export function parseDuration(duration: string): number | null {
   const match = duration.match(/^(\d+(?:\.\d+)?)\s*(m|min|mins|minutes?|h|hr|hrs|hours?|d|days?|w|wk|wks|weeks?)$/i)
   if (!match) return null
   const value = Number.parseFloat(match[1])
@@ -277,7 +277,7 @@ function parseDuration(duration: string): number | null {
   return null
 }
 
-function findAllSessionFiles(maxAgeMs: number | null = null, cwdFilter: string | null = null): Array<string> {
+export function findAllSessionFiles(maxAgeMs: number | null = null, cwdFilter: string | null = null): Array<string> {
   const sessionFiles: Array<string> = []
 
   if (!existsSync(claudeProjectsDir)) {
@@ -532,4 +532,6 @@ function main(): void {
   }
 }
 
-main()
+if (import.meta.main) {
+  main()
+}

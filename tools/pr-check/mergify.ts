@@ -64,7 +64,7 @@ export function getApprovalStatus(pr: GhPullRequest): ApprovalStatus {
     } else if (pathA <= pathC) {
       detail = `-${pathA} Approval${pathA > 1 ? "s" : ""}`;
     } else {
-      detail = `${pathC} Approval${pathC > 1 ? "s" : ""}`;
+      detail = `-${pathC} Approval${pathC > 1 ? "s" : ""}`;
     }
   }
 

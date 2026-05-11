@@ -14,9 +14,10 @@ alias gc='git commit'
 alias gd='git diff'
 alias gf='git diff'
 
+alias wgs='watch -n 1 --color git -c color.status=always status'
+
 alias gitroot='git rev-parse --show-toplevel 2>/dev/null'
 
 alias p='pnpm'
 
-alias c='claude --allow-dangerously-skip-permissions'
-alias ct='CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --allow-dangerously-skip-permissions'
+alias c='claude --dangerously-skip-permissions'
