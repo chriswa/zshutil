@@ -5,7 +5,11 @@ import { homedir } from 'os'
 import { join } from 'path'
 
 const homeDir = homedir()
+
+// Detect shell rc file: prefer .zshrc if it exists, otherwise fall back to .bashrc
 const zshrcPath = join(homeDir, '.zshrc')
+const bashrcPath = join(homeDir, '.bashrc')
+const rcPath = existsSync(zshrcPath) ? zshrcPath : bashrcPath
 
 // Find the devkit root directory (parent of install/)
 const devkitPath = join(import.meta.dir, '..')
@@ -13,11 +17,11 @@ const sourceLine = `source ${devkitPath}/shell/index.sh`
 
 function main() {
   try {
-    process.stdout.write(`Working with file: ${zshrcPath}\n`)
+    process.stdout.write(`Working with file: ${rcPath}\n`)
 
-    // Check if ~/.zshrc exists
-    if (!existsSync(zshrcPath)) {
-      process.stderr.write('Error: ~/.zshrc file not found\n')
+    // Check if rc file exists
+    if (!existsSync(rcPath)) {
+      process.stderr.write('Error: no ~/.zshrc or ~/.bashrc file found\n')
       process.exit(1)
     }
 
@@ -27,12 +31,12 @@ function main() {
       process.exit(1)
     }
 
-    // Read the current .zshrc content
-    const zshrcContent = readFileSync(zshrcPath, 'utf8')
+    // Read the current rc file content
+    const zshrcContent = readFileSync(rcPath, 'utf8')
 
     // Check if the source line already exists
     if (zshrcContent.includes(sourceLine)) {
-      process.stdout.write('chriswa-devkit shell config is already installed in ~/.zshrc\n')
+      process.stdout.write(`chriswa-devkit shell config is already installed in ${rcPath}\n`)
       process.exit(0)
     }
 
@@ -47,10 +51,10 @@ function main() {
     // Add blank line, source line, and final newline
     newContent += `\n${sourceLine}\n`
 
-    // Write the updated content back to .zshrc
-    writeFileSync(zshrcPath, newContent)
+    // Write the updated content back to the rc file
+    writeFileSync(rcPath, newContent)
 
-    process.stdout.write('Successfully added chriswa-devkit shell config to ~/.zshrc\n')
+    process.stdout.write(`Successfully added chriswa-devkit shell config to ${rcPath}\n`)
     process.stdout.write(`Added: ${sourceLine}\n`)
   }
   catch (error: unknown) {

@@ -16,56 +16,119 @@ function git_status_color() {
   return 0                                               # clean
 }
 
-function set_prompt() {
-  local exit_code=$?
+if [[ -n "$ZSH_VERSION" ]]; then
 
-  local esc=$'\e'
-  local reset="%{${esc}[0m%}"
-  local colour_cwd="%{${esc}[30;107m%}"
-  local colour_good_exit="%{${esc}[30;107m%}"
-  local colour_bad_exit="%{${esc}[93;41m%}"
+  function set_prompt() {
+    local exit_code=$?
 
-  local bright_white_on_black="%{${esc}[97;40m%}"
+    local esc=$'\e'
+    local reset="%{${esc}[0m%}"
+    local colour_cwd="%{${esc}[30;107m%}"
+    local colour_good_exit="%{${esc}[30;107m%}"
+    local colour_bad_exit="%{${esc}[93;41m%}"
 
-  local colour_branch_clean="%{${esc}[30;106m%}"
-  local colour_branch_staged="%{${esc}[30;103m%}"
-  local colour_branch_dirty="%{${esc}[30;105m%}"
+    local bright_white_on_black="%{${esc}[97;40m%}"
+    local colour_machine="%{${esc}[30;102m%}"
 
-  local branch_color=""
-  local branch_name=$(git_branch)
-
-  if [[ -n "$branch_name" ]]; then
-    git_status_color
-    local git_state=$?
-
-    if [[ $git_state -eq 1 ]]; then
-      branch_color=$colour_branch_dirty
-    elif [[ $git_state -eq 2 ]]; then
-      branch_color=$colour_branch_staged
-    else
-      branch_color=$colour_branch_clean
+    local machine_prefix=""
+    if [[ -n "$SSH_CLIENT" ]]; then
+      machine_prefix="${colour_machine} $(hostname -s) ${reset}"
     fi
 
-    branch_name="${branch_color} ${branch_name} ${reset}"
-  fi
+    local colour_branch_clean="%{${esc}[30;106m%}"
+    local colour_branch_staged="%{${esc}[30;103m%}"
+    local colour_branch_dirty="%{${esc}[30;105m%}"
 
-  local cwd='%~'
+    local branch_color=""
+    local branch_name=$(git_branch)
 
-  local exit_colour="${colour_good_exit}"
-  local dollar_hidden="%{${esc}[97m%}"
-  if [[ $exit_code -ne 0 ]]; then
-    exit_colour="${colour_bad_exit}"
-    dollar_hidden="%{${esc}[31m%}"
-  fi
-  PROMPT="${branch_name}${exit_colour} ${cwd}${dollar_hidden}\$${reset}${bright_white_on_black} "
-}
+    if [[ -n "$branch_name" ]]; then
+      git_status_color
+      local git_state=$?
 
-# Reset colors just before command executes (prevents color bleed into output)
-function reset_colors_before_exec() {
-  printf '\e[0m'
-}
+      if [[ $git_state -eq 1 ]]; then
+        branch_color=$colour_branch_dirty
+      elif [[ $git_state -eq 2 ]]; then
+        branch_color=$colour_branch_staged
+      else
+        branch_color=$colour_branch_clean
+      fi
 
-# Set up the prompt hooks
-autoload -Uz add-zsh-hook
-add-zsh-hook precmd set_prompt
-add-zsh-hook preexec reset_colors_before_exec
+      branch_name="${branch_color} ${branch_name} ${reset}"
+    fi
+
+    local cwd='%~'
+
+    local exit_colour="${colour_good_exit}"
+    local dollar_hidden="%{${esc}[97m%}"
+    if [[ $exit_code -ne 0 ]]; then
+      exit_colour="${colour_bad_exit}"
+      dollar_hidden="%{${esc}[31m%}"
+    fi
+    PROMPT="${machine_prefix}${branch_name}${exit_colour} ${cwd}${dollar_hidden}\$${reset}${bright_white_on_black} "
+  }
+
+  # Reset colors just before command executes (prevents color bleed into output)
+  function reset_colors_before_exec() {
+    printf '\e[0m'
+  }
+
+  autoload -Uz add-zsh-hook
+  add-zsh-hook precmd set_prompt
+  add-zsh-hook preexec reset_colors_before_exec
+
+elif [[ -n "$BASH_VERSION" ]]; then
+
+  function _set_prompt_bash() {
+    local exit_code=$?
+
+    local reset='\[\e[0m\]'
+    local colour_good_exit='\[\e[30;107m\]'
+    local colour_bad_exit='\[\e[93;41m\]'
+    local bright_white_on_black='\[\e[97;40m\]'
+    local colour_machine='\[\e[30;102m\]'
+    local colour_branch_clean='\[\e[30;106m\]'
+    local colour_branch_staged='\[\e[30;103m\]'
+    local colour_branch_dirty='\[\e[30;105m\]'
+
+    local machine_prefix=""
+    if [[ -n "$SSH_CLIENT" ]]; then
+      machine_prefix="${colour_machine} $(hostname -s) ${reset}"
+    fi
+
+    local branch_name
+    branch_name=$(git_branch)
+    local branch_part=""
+
+    if [[ -n "$branch_name" ]]; then
+      git_status_color
+      local git_state=$?
+      local branch_color
+      if [[ $git_state -eq 1 ]]; then
+        branch_color=$colour_branch_dirty
+      elif [[ $git_state -eq 2 ]]; then
+        branch_color=$colour_branch_staged
+      else
+        branch_color=$colour_branch_clean
+      fi
+      branch_part="${branch_color} ${branch_name} ${reset}"
+    fi
+
+    local exit_colour dollar_hidden
+    if [[ $exit_code -ne 0 ]]; then
+      exit_colour=$colour_bad_exit
+      dollar_hidden='\[\e[31m\]'
+    else
+      exit_colour=$colour_good_exit
+      dollar_hidden='\[\e[97m\]'
+    fi
+
+    PS1="${machine_prefix}${branch_part}${exit_colour} \w${dollar_hidden}\$${reset}${bright_white_on_black} "
+  }
+
+  # PS0 is displayed before each command runs — resets colors to prevent bleed into output
+  PS0=$'\e[0m'
+
+  PROMPT_COMMAND="_set_prompt_bash"
+
+fi
