@@ -8,6 +8,7 @@ bun.lock
 dist/
 *.js
 *.d.ts
+__pycache__/
 
 # IDE
 .vscode/

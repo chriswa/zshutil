@@ -30,8 +30,12 @@ import wave
 
 from cartesia import AsyncCartesia
 
-VOICE_ID = "f786b574-daa5-4673-aa0c-cbe3e8534c02"
+# Override per-invocation with CARTESIA_VOICE_ID; falls back to the default voice.
+VOICE_ID = os.environ.get("CARTESIA_VOICE_ID") or "f786b574-daa5-4673-aa0c-cbe3e8534c02"
 MODEL = "sonic-3"
+# Output volume (sonic-3 generation_config control, range 0.5–2.0). Boosted
+# above 1.0 by default so quieter voices stay audible; override with CARTESIA_VOLUME.
+VOLUME = float(os.environ.get("CARTESIA_VOLUME") or 1.5)
 SAMPLE_RATE = 44100
 # Cartesia WebSocket contexts silently truncate audio output at ~47 seconds.
 # Keep each batch well under that to ensure all text is synthesized.
@@ -219,6 +223,7 @@ async def _stream_batch(
     ctx = ws.context(
         model_id=MODEL,
         voice={"mode": "id", "id": VOICE_ID},
+        generation_config={"volume": VOLUME},
         output_format={
             "container": "raw",
             "encoding": "pcm_f32le",

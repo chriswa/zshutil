@@ -4,6 +4,11 @@ description: Use when searching, analyzing, or understanding Claude Code session
 
 # Claude Code Session Files
 
+> **Determining if a session is genuinely idle** (turn ended AND all background
+> tasks/agents/monitors finished): read `references/session-idleness.md` in this
+> skill. The transcript alone is NOT a reliable ledger of background-work
+> completion — killed or idle-time-completed tasks leave no completion event.
+
 ## File Locations
 
 Session files live under `~/.claude/projects/`. Each project gets a directory named by replacing `/` with `-` in the absolute working directory path:
